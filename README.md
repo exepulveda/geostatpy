@@ -1,0 +1,4 @@
+geostatpy
+=========
+
+Geostatistical Python toolbox
