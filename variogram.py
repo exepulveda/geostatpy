@@ -1,8 +1,14 @@
 import numpy as np
 
-from geometry import sqdistance, make_rotation_matrix
+from geometry import sqdistance, make_rotation_matrix, make_rotation_matrix2D
+
+class VariogramDefinitionException(Exception):
+    pass    
+    
 
 def spherical(h,c,a):
+    '''Spherica model
+    '''
     hr = h/a
     
     idx = np.where(hr > 1)[0]
@@ -18,27 +24,40 @@ def spherical(h,c,a):
     return ret
 
 def exponential(h,c,a):
+    '''Exponential model
+    '''
     hr = h/a
     
     ret = c*np.exp(-3.0*hr)
     
     return ret
     
+'''Supported variogram models'''
 structure_types = { "spherical":spherical, "exponential":exponential}
 
 class VariogramStructure(object):
-    def __init__(self,structure_type,sill,ranges,angles=[0.0,0.0,0.0]):
+    def __init__(self,structure_type,sill,ranges,angles):
         ranges = np.array(ranges)
         self.sill = sill
         self.structure_type = structure_type
+        self._ranges = ranges
         self._range = ranges[0]
-        self._rotmat = make_rotation_matrix(angles,ranges[1:]/ranges[0])
         self._function = structure_types[structure_type]
         
     def covariance(self,p1,p2):
         h2 = sqdistance(p1,p2,self._rotmat)
         h = np.sqrt(h2)
         return self._function(h,self.sill,self._range)
+
+class VariogramStructure3D(VariogramStructure):
+    def __init__(self,structure_type,sill,ranges,angles=[0.0,0.0,0.0]):
+        VariogramStructure.__init__(self,structure_type,sill,ranges,angles)
+        self._rotmat = make_rotation_matrix(angles,self._ranges[1:]/self._ranges[0])
+
+class VariogramStructure2D(VariogramStructure):
+    def __init__(self,structure_type,sill,ranges,angle=0.0):
+        VariogramStructure.__init__(self,structure_type,sill,ranges,angle)
+        self._rotmat = make_rotation_matrix2D(angle,ranges[1]/ranges[0])
         
 class VariogramModel(object):
     def __init__(self,nugget=0.0):
@@ -46,10 +65,6 @@ class VariogramModel(object):
         self.structures = []
         self._default_rotmat = make_rotation_matrix([0.0,0.0,0.0])
         
-    def add_structure(self,structure_type,sill,ranges,angles):
-        vs = VariogramStructure(structure_type,sill,ranges,angles)
-        self.structures += [vs]
-
     def max_covariance(self):
         return self.nugget + sum([st.sill for st in self.structures])
         
@@ -117,7 +132,7 @@ class VariogramModel(object):
 
         return ret
         
-    def kriging_system(self,p,neigborhood):
+    def kriging_system(self,p,neigborhood,dicretized_points=None):
         #create Ax=b system
         n = len(neigborhood)
         
@@ -131,9 +146,109 @@ class VariogramModel(object):
         #symmetric
         for i in xrange(n):
             A[i+1:,i] = A[i,i+1:]
-            
-        b = self.covariance(p,neigborhood)
 
+        if dicretized_points is None:
+            b = self.covariance(p,neigborhood)
+        else:
+            b = np.zeros(n)
+            for pd in (dicretized_points + p):
+                b += self.covariance(pd,neigborhood)
+
+            b = b / len(dicretized_points)
+            
         return A,b
         
+class VariogramModel3D(VariogramModel):
+    def __init__(self,nugget=0.0):
+        VariogramModel.__init__(self,nugget)
+        self._default_rotmat = make_rotation_matrix([0.0,0.0,0.0])
         
+    def add_structure(self,structure_type,sill,ranges,angles):
+        if structure_type not in structure_types:
+            raise VariogramDefinitionException("Undefined structure type")
+            
+        vs = VariogramStructure3D(structure_type,sill,ranges,angles)
+        self.structures += [vs]
+
+    def compute_variogram(self,directions):
+        #generate vectors according lag and direction
+        max_covariance = self.max_covariance()
+        ret = []
+        
+        origin = np.zeros(3)
+        for direction in directions:
+            lags,lag_size,azimuth,dip = direction
+            
+            vector = np.zeros((lags+1,3))
+        
+            #lag directional vector
+            xoff = np.sin(np.radians(azimuth))*np.cos(np.radians(dip))*lag_size
+            yoff = np.cos(np.radians(azimuth))*np.cos(np.radians(dip))*lag_size
+            zoff = np.sin(np.radians(azimuth))*lag_size
+            
+            vector[1:,0] = (np.arange(lags)+1)
+            vector[1:,1] = vector[1:,0]
+            vector[1:,2] = vector[1:,0]
+            
+            vector[:,0] *= xoff
+            vector[:,1] *= yoff
+            vector[:,2] *= zoff
+            
+            covariances = self.covariance(origin,vector)
+            
+            h = np.sqrt(np.sum(vector**2,1))
+            gam = max_covariance - covariances
+            
+            vmodel = np.empty((lags+1,2))
+            vmodel[:,0] = h
+            vmodel[:,1] = gam
+            
+            ret += [(vmodel,max_covariance)]
+
+        return ret
+
+class VariogramModel2D(VariogramModel):
+    def __init__(self,nugget=0.0):
+        VariogramModel.__init__(self,nugget)
+        self._default_rotmat = make_rotation_matrix2D(0.0,0.0)
+        
+    def add_structure(self,structure_type,sill,ranges,angle):
+        if structure_type not in structure_types:
+            raise VariogramDefinitionException("Undefined structure type")
+            
+        vs = VariogramStructure2D(structure_type,sill,ranges,angle)
+        self.structures += [vs]
+
+    def compute_variogram(self,directions):
+        #generate vectors accoring lag and direction
+        max_covariance = self.max_covariance()
+        ret = []
+        
+        origin = np.zeros(2)
+        for direction in directions:
+            lags,lag_size,azimuth,dip = direction
+            
+            vector = np.zeros((lags+1,2))
+        
+            #lag directional vector
+            xoff = np.sin(np.radians(azimuth))*lag_size
+            yoff = np.cos(np.radians(azimuth))*lag_size
+            
+            vector[1:,0] = (np.arange(lags)+1)
+            vector[1:,1] = vector[1:,0]
+            
+            vector[:,0] *= xoff
+            vector[:,1] *= yoff
+            
+            covariances = self.covariance(origin,vector)
+            
+            h = np.sqrt(np.sum(vector**2,1))
+            gam = max_covariance - covariances
+            
+            vmodel = np.empty((lags+1,2))
+            vmodel[:,0] = h
+            vmodel[:,1] = gam
+            
+            ret += [(vmodel,max_covariance)]
+
+        return ret
