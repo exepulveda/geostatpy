@@ -14,13 +14,11 @@ In this first version I implemented the following:
 * Isotropy and anisotropy for variogram models and searching criteria
 
 Some python features
-* Standard libraries used
-** Numpy
-** Scipy
+* Standard libraries used: Numpy and Scipy
 * Vectorized matrix operations
 * No c/c++/fortran dependencies
 
-This a toolbox for begginers, students and python lovers, so I am not resposible for any mistake. If you report any mistake I will try to fixed as soon as possible. Just send me an email at exequiel.sepulveda@gmail.com
+This a toolbox for begginers, students and python lovers, so I am not resposible for any mistake. If you report any mistake I will try to fix it as soon as possible. Just send me an email at exequiel.sepulveda@gmail.com
 
 Cheers!
 
