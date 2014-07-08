@@ -156,6 +156,8 @@ class VariogramModel(object):
 
             b = b / len(dicretized_points)
             
+            
+        #print "System",A,b
         return A,b
         
 class VariogramModel3D(VariogramModel):

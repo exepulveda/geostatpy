@@ -97,7 +97,7 @@ class Grid3D(object):
 
     def __getitem__(self,item): 
         i,j,k = self.indices(item)
-        print item,i,j,k
+        #print item,i,j,k
         p = np.array([i,j,k])
         p = p*self.sizes + self.starts
         return p
@@ -118,7 +118,6 @@ class Grid3D(object):
             
         ret = ret +d*0.5
 
-            
         ret = ret -0.5*self.sizes
         
         return ret
