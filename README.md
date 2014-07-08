@@ -18,6 +18,7 @@ Some python features
 ** Numpy
 ** Scipy
 * Vectorized matrix operations
+* No c/c++/fortran dependencies
 
 This a toolbox for begginers, students and python lovers, so I am not resposible for any mistake. If you report any mistake I will try to fixed as soon as possible. Just send me an email at exequiel.sepulveda@gmail.com
 
