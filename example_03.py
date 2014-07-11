@@ -22,4 +22,4 @@ ret,non_estimated,ret_indices = kriging.kriging3d_block("ordinay",grid,points,or
 
 for point,r,indices in zip(grid,ret,ret_indices):
     estimation,variance = r
-    print "Estimation at {0}: estimated value = {1}, variance = {2}, samples used = {3}".format(point,estimation,variance,len(indices))
+    print("Estimation at {0}: estimated value = {1}, variance = {2}, samples used = {3}".format(point,estimation,variance,len(indices)))

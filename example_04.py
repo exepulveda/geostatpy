@@ -21,5 +21,5 @@ grid = geometry.Grid3D([10,10,10],[40,60,13],[20.0,30.0,6.5])
 iterator = kriging.kriging3d_block_iterator("ordinay",grid,points,ore,vmodel,discretization=None,mindata=1,maxdata=5,azimuth=0.0,dip=0.0,plunge=0.0,search_range=100,anisotropy=[1.0,1.0],full=True)
 
 for point,estimation,variance,indices in iterator:
-    print "Estimation at {0}: estimated value = {1}, variance = {2}, samples used = {3}".format(point,estimation,variance,len(indices))
+    print("Estimation at {0}: estimated value = {1}, variance = {2}, samples used = {3}".format(point,estimation,variance,len(indices)))
 

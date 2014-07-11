@@ -22,4 +22,4 @@ for i,point in enumerate(points):
     estimation = ret[i,0]
     error = errors[i]
     indices = ret_indices[i]
-    print "Crossvalidation at {0}: real value = {1}, estimated value = {2}, error = {3}, samples used = {4}".format(point,ore[i],estimation,error,len(indices))
+    print("Crossvalidation at {0}: real value = {1}, estimated value = {2}, error = {3}, samples used = {4}".format(point,ore[i],estimation,error,len(indices)))

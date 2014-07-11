@@ -64,7 +64,10 @@ class GridIterator(object):
         self._grid = grid
         self._current = 0
 
-    def next(self): # Python 3: def __next__(self)
+    def next(self):
+        return self.__next__()
+
+    def __next__(self): # Python 3: def __next__(self)
         if self._current >= self._grid.n:
             raise StopIteration
         else:
@@ -110,9 +113,9 @@ class Grid3D(object):
         ret = np.empty((n,3))
         
         p = 0
-        for i in xrange(discretization[0]):
-            for j in xrange(discretization[1]):
-                for k in xrange(discretization[2]):
+        for i in range(discretization[0]):
+            for j in range(discretization[1]):
+                for k in range(discretization[2]):
                     ret[p] = np.array([d[0] * i,d[1] * j,d[2] * k])
                     p += 1
             

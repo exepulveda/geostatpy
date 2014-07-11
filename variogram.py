@@ -137,14 +137,14 @@ class VariogramModel(object):
         n = len(neigborhood)
         
         A = np.zeros((n,n))
-        for i in xrange(n):
+        for i in range(n):
             p1 = neigborhood[i,:]
             p2 = neigborhood[i:,:]
             cov = self.covariance(p1,p2)
             A[i,i:] = cov
 
         #symmetric
-        for i in xrange(n):
+        for i in range(n):
             A[i+1:,i] = A[i,i+1:]
 
         if dicretized_points is None:
