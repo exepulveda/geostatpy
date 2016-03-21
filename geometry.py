@@ -5,8 +5,8 @@ def sqdistance(p1,p2,rotmat=None):
     if rotmat is not None:
         diff = np.dot(diff,rotmat.T)
         
-    if isinstance(diff, np.ndarray):
-        return np.sum(diff**2,1)
+    if len(diff.shape) > 1:
+        return np.sum(diff**2,axis=1)
     else:
         return np.sum(diff**2)
 
