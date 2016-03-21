@@ -43,7 +43,7 @@ class KDTree3D(KDTree):
         #create rotmat
         rotmat = make_rotation_matrix([azimuth,dip,plunge],anisotropy)
         
-        KDTree.__init__(self,points,rotmat)
+        KDTree.__init__(self,points,rotmat.T)
 
 '''KDTree for 2D points to search neigborhs'''
 class KDTree2D(KDTree):
@@ -60,7 +60,7 @@ class KDTree2D(KDTree):
 
 def kriging_system(kriging_type,vm,max_variance,point,points,data,dicretized_points=None):
     A,b = vm.kriging_system(point,points,dicretized_points)
-    if kriging_type == "ordinay":            
+    if kriging_type == "ordinary":
         #add lagrange
         n = len(A)
         A2 = np.ones((n+1,n+1))
@@ -72,6 +72,8 @@ def kriging_system(kriging_type,vm,max_variance,point,points,data,dicretized_poi
         b = b2
         
     x = np.linalg.solve(A,b)
+    
+    #print A.shape,b.shape,x.shape
     
     if kriging_type == "simple":            
         estimation = mean + np.sum((data - mean) * x)
@@ -100,9 +102,12 @@ def kriging_cross_validation(kriging_type,points,data,vm,mean,mindata,maxdata,se
         #serach one more to eliminate itself
         d,indices = kdtree.search(point,maxdata+1,search_range)
         
-        #remove first, because it is itself
-        d = d[1:]
-        indices = indices[1:]
+        #remove zero distance
+        zind = np.where(d>= 0.00001)[0]
+        if len(zind) < n:
+            d =  d[zind]
+            indices = indices[zind]
+
         if full:
             ret_indices += [indices]
         
@@ -112,10 +117,17 @@ def kriging_cross_validation(kriging_type,points,data,vm,mean,mindata,maxdata,se
             errors[i] = np.nan
             non_estimated +=1
         else:
-            estimation,variance,A,b,x = kriging_system(kriging_type,vm,max_covariance,point,points[indices,:],data[indices])
-            errors[i] = data[i] - estimation
+            try:
+                estimation,variance,A,b,x = kriging_system(kriging_type,vm,max_covariance,point,points[indices,:],data[indices])
+                errors[i] = data[i] - estimation
+            except:
+                estimation = np.nan
+                variance = np.nan
+                errors[i] = np.nan
+                non_estimated +=1
+                print i,point,"kriging problem",d,i
 
-            #print A,b,x,estimation,variance,points[indices]
+            #print A,b,x,estimation,variance
 
         
         ret[i,0] = estimation

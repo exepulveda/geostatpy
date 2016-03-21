@@ -3,12 +3,35 @@ import numpy as np
 def sqdistance(p1,p2,rotmat=None):
     diff = p1 - p2
     if rotmat is not None:
-        diff = np.dot(diff,rotmat)
+        diff = np.dot(diff,rotmat.T)
         
     if isinstance(diff, np.ndarray):
         return np.sum(diff**2,1)
     else:
         return np.sum(diff**2)
+
+def make_rotation_z(angle):
+    rotmat = np.zeros((3,3))
+    a = math.radians(angle)
+    rotmat[0,0] = math.cos(a)
+    rotmat[0,1] = -math.sin(a)
+    rotmat[1,1] = rotmat[0,0]
+    rotmat[1,0] = -rotmat[0,1]
+    rotmat[2,2] = 1.0
+    
+    return rotmat
+
+def make_rotation_x(angle):
+    rotmat = np.zeros((3,3))
+    a = math.radians(angle)
+    rotmat[1,1] = math.cos(a)
+    rotmat[1,2] = -math.sin(a)
+    rotmat[2,2] = rotmat[1,1]
+    rotmat[2,1] = -rotmat[1,2]
+    rotmat[0,0] = 1.0
+    
+    return rotmat
+    
     
 def make_rotation_matrix(angles,ratios=[1.0, 1.0]):
     ''' angles is a 3d vector in degrees: azimuth, dip, plunge
@@ -31,12 +54,12 @@ def make_rotation_matrix(angles,ratios=[1.0, 1.0]):
     rotation_matrix[0,0] = cos_rad[1] * cos_rad[0]
     rotation_matrix[0,1] = cos_rad[1] * sin_rad[0]
     rotation_matrix[0,2] = -sin_rad[1]
-    rotation_matrix[1,0] = (-cos_rad[2]*sin_rad[0] + sin_rad[2]*sin_rad[1]*cos_rad[0]) * ratios[0]
-    rotation_matrix[1,1] = (cos_rad[2]*cos_rad[0] + sin_rad[2]*sin_rad[1]*sin_rad[0]) * ratios[0]
-    rotation_matrix[1,2] = (sin_rad[2]*cos_rad[1]) * ratios[0]
-    rotation_matrix[2,0] = (sin_rad[2]*sin_rad[0] + cos_rad[2]*sin_rad[1]*cos_rad[0]) * ratios[1]
-    rotation_matrix[2,1] = (-sin_rad[2]*cos_rad[0] + cos_rad[2]*sin_rad[1]*sin_rad[0]) * ratios[1]
-    rotation_matrix[2,2] = (cos_rad[2]*cos_rad[1]) * ratios[1]
+    rotation_matrix[1,0] = (-cos_rad[2]*sin_rad[0] + sin_rad[2]*sin_rad[1]*cos_rad[0]) / ratios[0]
+    rotation_matrix[1,1] = (cos_rad[2]*cos_rad[0] + sin_rad[2]*sin_rad[1]*sin_rad[0]) / ratios[0]
+    rotation_matrix[1,2] = (sin_rad[2]*cos_rad[1]) / ratios[0]
+    rotation_matrix[2,0] = (sin_rad[2]*sin_rad[0] + cos_rad[2]*sin_rad[1]*cos_rad[0]) / ratios[1]
+    rotation_matrix[2,1] = (-sin_rad[2]*cos_rad[0] + cos_rad[2]*sin_rad[1]*sin_rad[0]) / ratios[1]
+    rotation_matrix[2,2] = (cos_rad[2]*cos_rad[1]) / ratios[1]
 
     return rotation_matrix
 
@@ -80,14 +103,18 @@ class Grid3D(object):
         self.sizes = np.array(sizes,dtype=float)
         self.starts = np.array(starts,dtype=float)
         self.n = np.product(nodes)
-        self.nx = np.product(nodes[0])
-        self.nxy = np.product(nodes[0:2])
+        self.nx = self.nodes[0]
+        self.nxy = self.nx * self.nodes[1]
         
     def __len__(self):
         return self.n
 
+    def volume(self):
+        return np.prod(self.sizes)
+        
     def blockindex(self,i,j,k):
-        return i*self.nodes[0] + j*self.nodes[1] * self.nx  + k*self.nodes[2] * self.nxy
+        #return i*self.nodes[0] + j*self.nodes[1] * self.nx  + k*self.nodes[2] * self.nxy
+        return i + j*self.nx  + k*self.nxy
 
     def indices(self,blockid):
         k = blockid // self.nxy
@@ -124,17 +151,26 @@ class Grid3D(object):
         ret = ret -0.5*self.sizes
         
         return ret
-
+        
+    def validate(self):
+        #ids
+        for k,cell in enumerate(self):
+            assert k < self.n
+            #reconstruction
+            i,j,m = self.indices(k)
+            assert k == self.blockindex(i,j,m)
+            
 class Grid2D(object):
     def __init__(self,nodes,sizes,starts):
-        self.nodes = nodes
-        self.sizes = sizes
-        self.starts = starts
+        self.nodes = np.array(nodes)
+        self.sizes = np.array(sizes)
+        self.starts = np.array(starts)
         self.n = np.product(nodes)
         self.nx = np.product(nodes[0])
 
     def blockindex(self,i,j):
-        return i*self.nodes[0] + j*self.nodes[1] * self.nx
+        #return i*self.nodes[0] + j*self.nodes[1] * self.nx
+        return i + j*self.nx
 
     def indices(self,blockid):
         j = blockid // self.nx
@@ -144,8 +180,28 @@ class Grid2D(object):
     def __iter__(self):
         return GridIterator(self)
 
-    def getitem(self,item): 
+    def __getitem__(self,item): 
         i,j = self.indices(item)
         p = np.array([i,j])
         p = p*self.sizes + self.starts
         return p
+
+    def get_box(self,item): 
+        i,j = self.indices(item)
+        pcentre = np.array([i,j])
+        pcentre = pcentre*self.sizes + self.starts
+        
+        
+        p1 = pcentre - self.sizes/2.0
+        p2 = pcentre + self.sizes/2.0
+        
+        return p1,p2
+        
+    def validate(self):
+        #ids
+        for k,cell in enumerate(self):
+            assert k < self.n
+            #reconstruction
+            i,j = self.indices(k)
+            assert k == self.blockindex(i,j)
+        

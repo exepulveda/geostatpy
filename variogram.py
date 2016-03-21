@@ -53,7 +53,9 @@ class VariogramStructure3D(VariogramStructure):
     def __init__(self,structure_type,sill,ranges,angles=[0.0,0.0,0.0]):
         VariogramStructure.__init__(self,structure_type,sill,ranges,angles)
         self._rotmat = make_rotation_matrix(angles,self._ranges[1:]/self._ranges[0])
-
+        
+        print self._rotmat
+        
 class VariogramStructure2D(VariogramStructure):
     def __init__(self,structure_type,sill,ranges,angle=0.0):
         VariogramStructure.__init__(self,structure_type,sill,ranges,angle)
@@ -103,6 +105,8 @@ class VariogramModel(object):
         origin = np.zeros(3)
         for direction in directions:
             lags,lag_size,azimuth,dip = direction
+            
+            print lags,lag_size,azimuth,dip
             
             vector = np.zeros((lags+1,3))
         
@@ -180,22 +184,28 @@ class VariogramModel3D(VariogramModel):
         origin = np.zeros(3)
         for direction in directions:
             lags,lag_size,azimuth,dip = direction
+
+
             
             vector = np.zeros((lags+1,3))
         
             #lag directional vector
             xoff = np.sin(np.radians(azimuth))*np.cos(np.radians(dip))*lag_size
             yoff = np.cos(np.radians(azimuth))*np.cos(np.radians(dip))*lag_size
-            zoff = np.sin(np.radians(azimuth))*lag_size
+            zoff = np.sin(np.radians(dip))*lag_size
+
+            print lags,lag_size,azimuth,dip,xoff,yoff,zoff
+
             
             vector[1:,0] = (np.arange(lags)+1)
             vector[1:,1] = vector[1:,0]
             vector[1:,2] = vector[1:,0]
             
+            
             vector[:,0] *= xoff
             vector[:,1] *= yoff
             vector[:,2] *= zoff
-            
+
             covariances = self.covariance(origin,vector)
             
             h = np.sqrt(np.sum(vector**2,1))
