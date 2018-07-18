@@ -18,7 +18,7 @@ ore = data[:,3]
 
 grid = geometry.Grid3D([10,10,10],[40,60,13],[20.0,30.0,6.5])
 
-ret,non_estimated,ret_indices = kriging.kriging3d_block("ordinay",grid,points,ore,vmodel,[3,3,2],mindata=1,maxdata=15,azimuth=0.0,dip=0.0,plunge=0.0,search_range=100,anisotropy=[1.0,1.0],full=True)
+ret,non_estimated,ret_indices = kriging.kriging3d_block("ordinary",grid,points,ore,vmodel,[3,3,2],mindata=1,maxdata=15,azimuth=0.0,dip=0.0,plunge=0.0,search_range=100,anisotropy=[1.0,1.0],full=True)
 
 for point,r,indices in zip(grid,ret,ret_indices):
     estimation,variance = r

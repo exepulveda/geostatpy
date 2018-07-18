@@ -16,7 +16,7 @@ data = np.loadtxt("samples.csv",delimiter=";")
 points = data[:,0:3]
 ore = data[:,3]
 
-ret,err,non_estimated,errors,ret_indices = kriging.kriging3d_cross_validation("ordinay",points,ore,vmodel,mindata=1,maxdata=5,azimuth=0.0,dip=0.0,plunge=0.0,search_range=100,anisotropy=[1.0,1.0],full=True)
+ret,err,non_estimated,errors,ret_indices = kriging.kriging3d_cross_validation("ordinary",points,ore,vmodel,mindata=1,maxdata=5,azimuth=0.0,dip=0.0,plunge=0.0,search_range=100,anisotropy=[1.0,1.0],full=True)
 
 for i,point in enumerate(points):
     estimation = ret[i,0]

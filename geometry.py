@@ -168,6 +168,14 @@ class Grid2D(object):
         self.n = np.product(nodes)
         self.nx = np.product(nodes[0])
 
+    def __len__(self):
+        return self.n
+        
+    def get_location(self,i,j):
+        p = np.array([i,j])
+        p = p*self.sizes + self.starts
+        return p
+
     def blockindex(self,i,j):
         #return i*self.nodes[0] + j*self.nodes[1] * self.nx
         return i + j*self.nx
@@ -196,7 +204,26 @@ class Grid2D(object):
         p2 = pcentre + self.sizes/2.0
         
         return p1,p2
+
+    def discretize(self,discretization):
+        n = np.product(discretization)
         
+        d = self.sizes / np.array(discretization)
+        
+        ret = np.empty((n,2))
+        
+        p = 0
+        for i in range(discretization[0]):
+            for j in range(discretization[1]):
+                ret[p] = np.array([d[0] * i,d[1] * j])
+                p += 1
+            
+        ret = ret +d*0.5
+
+        ret = ret -0.5*self.sizes
+        
+        return ret
+                
     def validate(self):
         #ids
         for k,cell in enumerate(self):

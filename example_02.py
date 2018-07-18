@@ -23,7 +23,7 @@ for d in points:
     
 points2d = np.array(points2d)
 
-ret,err,non_estimated,errors,ret_indices = kriging.kriging2d_cross_validation("ordinay",points2d,ore,vmodel,mindata=1,maxdata=5,azimuth=0.0,search_range=100,anisotropy=1.0,full=True)
+ret,err,non_estimated,errors,ret_indices = kriging.kriging2d_cross_validation("ordinary",points2d,ore,vmodel,mindata=1,maxdata=5,azimuth=0.0,search_range=100,anisotropy=1.0,full=True)
 
 for i,point in enumerate(points2d):
     estimation = ret[i,0]

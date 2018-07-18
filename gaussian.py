@@ -178,12 +178,12 @@ def back_normal_scores(o_data,table,indices=None,na_value=np.nan):
     #find tails
     lower_tails = np.where(data < table[0,1])[0]
     if len(lower_tails) > 0:
-        print "lower_tails",table[0,1],lower_tails
+        print("lower_tails",table[0,1],lower_tails)
         pass
     
     upper_tails = np.where(data > table[-1,1])[0]
     if len(upper_tails) > 0:
-        print "upper_tails",table[-1,1],upper_tails
+        print("upper_tails",table[-1,1],upper_tails)
         pass
     
     if len(lower_tails) + len(upper_tails) > 0:
@@ -214,7 +214,7 @@ class NormalScoreTransformer(object):
                 #find missings
                 idx = np.where(X[:,i] != missing_value)[0]
                 
-                print "missings",missing_value,i,len(idx)
+                #print "missings",missing_value,i,len(idx)
                 
                 td, t = normal_scores(X[:,i],indices=idx,na_value=missing_value)
                 
@@ -243,21 +243,10 @@ class NormalScoreTransformer(object):
             return back_normal_scores(Y,self._table)
     
 if __name__ == "__main__"    :
-    data = np.arange(5000000)*10
-
-    data[10] = -999
-    indices = np.where(data != -999)[0]
-
-    transformed_data, table =  normal_scores(data,indices=indices)
-
-    #import matplotlib.pyplot as plt
-
-    data = np.arange(50)*10
+    data = np.arange(5000)*10
     transformed_data, table =  normal_scores(data)    
     bdata = back_normal_scores(transformed_data,table)
 
-    print data,bdata
-
-    #plt.hist(transformed_data[indices],51)
-
-    #plt.show()
+    print("mean",np.mean(transformed_data))
+    print("std",np.std(transformed_data))
+    print("RSME",np.mean((data-bdata)**2))
