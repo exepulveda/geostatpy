@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.ma as ma
 
 def sqdistance(p1,p2,rotmat=None):
     diff = p1 - p2
@@ -97,20 +98,65 @@ class GridIterator(object):
             self._current += 1
             return self._grid[self._current - 1]
 
-class Grid3D(object):
+class AbstractGrid(object):
     def __init__(self,nodes,sizes,starts):
         self.nodes = np.array(nodes,dtype=int)
         self.sizes = np.array(sizes,dtype=float)
         self.starts = np.array(starts,dtype=float)
         self.n = np.product(nodes)
-        self.nx = self.nodes[0]
-        self.nxy = self.nx * self.nodes[1]
 
     def __len__(self):
         return self.n
 
     def volume(self):
         return np.prod(self.sizes)
+
+    def subdivide(self):
+        '''This method subdivide the grid'''
+        new_nodes = self.nodes * 2
+        new_sizes = self.sizes / 2.0
+        new_starts = (self.starts - self.sizes / 2.0) + new_sizes/2.0
+        new_grid = self.__class__(new_nodes,new_sizes,new_starts)
+        return new_grid
+
+    def get_indices(self,location):
+        '''This method places samples on the grid averaging if it is needed'''
+        indices = [int(x) for x in np.floor((location - self.starts) / self.sizes)]
+        return indices
+
+    def place_samples_on(self,locations,data):
+        '''This method places samples on the grid averaging if it is needed'''
+        gvalues = np.zeros(tuple(self.nodes))
+        gcount = np.zeros(tuple(self.nodes))
+
+        locations_at_origin = locations - (self.starts - self.sizes/2.0)
+        for i,loc in enumerate(locations_at_origin):
+            indices = [int(x) for x in np.floor(loc / self.sizes)]
+            print(i,loc,indices,locations[i])
+
+            check_limits = [x >= 0 and x < self.nodes[j] for j,x in enumerate(indices)]
+            if np.all(check_limits):
+                #print(i,loc,indices,data[i])
+                gvalues[tuple(indices)] += data[i]
+                gcount[tuple(indices)] += 1.0
+
+        #print(gvalues)
+        #print(gcount)
+
+        non_zero = ma.masked_array(gvalues,mask=(gcount<=0))
+        non_zero[:,:] = non_zero / gcount
+
+        return non_zero
+
+    def __str__(self):
+        return "nodes: %s. sizes=%s. starts=%s"%(list(self.nodes),list(self.sizes),list(self.starts))
+
+class Grid3D(AbstractGrid):
+    def __init__(self,nodes,sizes,starts):
+        AbstractGrid.__init__(self,nodes,sizes,starts)
+
+        self.nx = self.nodes[0]
+        self.nxy = self.nx * self.nodes[1]
 
     def blockindex(self,i,j,k):
         #return i*self.nodes[0] + j*self.nodes[1] * self.nx  + k*self.nodes[2] * self.nxy
@@ -162,16 +208,14 @@ class Grid3D(object):
             i,j,m = self.indices(k)
             assert k == self.blockindex(i,j,m)
 
-class Grid2D(object):
-    def __init__(self,nodes,sizes,starts):
-        self.nodes = np.array(nodes)
-        self.sizes = np.array(sizes)
-        self.starts = np.array(starts)
-        self.n = np.product(nodes)
-        self.nx = np.product(nodes[0])
+    def on_grid(self,locations,data):
+        '''This method locate the samples on the grid'''
+        return None
 
-    def __len__(self):
-        return self.n
+class Grid2D(AbstractGrid):
+    def __init__(self,nodes,sizes,starts):
+        AbstractGrid.__init__(self,nodes,sizes,starts)
+        self.nx = np.product(nodes[0])
 
     def get_location(self,i,j):
         p = np.array([i,j])

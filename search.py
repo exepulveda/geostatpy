@@ -18,17 +18,26 @@ class SearchParameter(object):
 '''KDTree to search neigborhs. To support rotated search and anisotropy, the input points are rotated and scaled before the kdtree is built.
 Consequentely, all search point are rotated and scaled before.'''
 class KDTree(object):
-    def __init__(self,points,rotmat):
+    def __init__(self,points,rotmat=None):
         self._rotmat = rotmat
         #rotate and scale points
-        self._rotated_points = np.dot(points,self._rotmat)
+        if rotmat is None:
+            self._rotated_points = points.copy()
+        else:
+            self._rotated_points = np.dot(points,self._rotmat)
         #create kdtree
         self._kdtree = scipy.spatial.cKDTree(self._rotated_points)
 
+    def query_ball(self,p,r):
+        return self._kdtree.query_ball_point(p,r)
+
     def search(self,points,maxdata=1,max_distance=np.inf):
         #rotate and scale points
-        rp = np.dot(points,self._rotmat)
-        d,i = self._kdtree.query(rp, k=maxdata, distance_upper_bound=max_distance)
+        if self._rotmat is None:
+            d,i = self._kdtree.query(points, k=maxdata, distance_upper_bound=max_distance)
+        else:
+            rp = np.dot(points,self._rotmat)
+            d,i = self._kdtree.query(rp, k=maxdata, distance_upper_bound=max_distance)
         #remove infinity distances
         if isinstance(d, np.ndarray):
             idx = np.where(np.isfinite(d))
@@ -61,6 +70,9 @@ class KDTree2D(KDTree):
             raise KrigingSetupException("points are not 2D")
 
         #create rotmat
-        rotmat = make_rotation_matrix2D(azimuth,anisotropy)
+        if azimuth!=0.0 or anisotropy!=1.0:
+            rotmat = make_rotation_matrix2D(azimuth,anisotropy)
+        else:
+            rotmat = None
 
         KDTree.__init__(self,points,rotmat)

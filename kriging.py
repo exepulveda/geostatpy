@@ -162,14 +162,16 @@ def kriging2d_puntual(kriging_type,output_points,points,data,vm,mean=None,mindat
 
     max_covaraince = vm.max_covariance()
 
-    n = len(points)
+    n = len(output_points)
     ret = np.empty((n,2))
 
     non_estimated = 0
 
     if full:
         ret_indices = []
-
+        A_matrices = []
+        b_vectors = []
+        x_vectors = []
 
     for i,point in enumerate(output_points):
         d,indices = kdtree.search(point,maxdata,search_range)
@@ -181,17 +183,24 @@ def kriging2d_puntual(kriging_type,output_points,points,data,vm,mean=None,mindat
             estimation = np.nan
             variance = np.nan
             non_estimated +=1
+            A = None
+            b = None
+            x = None
         else:
-            estimation,variance,A,b,x = kriging_system(kriging_type,vm,point,points[indices,:],data[indices])
-
+            estimation,variance,A,b,x = kriging_system(kriging_type,vm,max_covaraince,point,points[indices,:],data[indices])
+            #kriging_type,vm,max_variance,point,points,data,dicretized_points=None
             #print A,b,x,estimation,variance,points[indices]
 
+        if full:
+            A_matrices += [A]
+            b_vectors += [b]
+            x_vectors += [x]
 
         ret[i,0] = estimation
         ret[i,1] = variance
 
     if full:
-        return ret,non_estimated,ret_indices
+        return ret,non_estimated,ret_indices,A_matrices,b_vectors,x_vectors
     else:
         return ret,non_estimated
 
@@ -228,6 +237,131 @@ def kriging3d_puntual(kriging_type,output_points,points,data,vm,mean=None,mindat
 
             #print A,b,x,estimation,variance,points[indices]
 
+
+        ret[i,0] = estimation
+        ret[i,1] = variance
+
+    if full:
+        return ret,non_estimated,ret_indices
+    else:
+        return ret,non_estimated
+
+'''Calculate block kriging for 2D points'''
+def kriging2d_block(kriging_type,grid,points,data,vm,discritization=None,mean=None,mindata=1,maxdata=1,azimuth=0.0,search_range=np.inf,anisotropy=1.0,full=False,debug=1):
+    if mean is None:
+        mean = np.mean(data)
+    #create kd3
+    kdtree = KDTree2D(points,azimuth,anisotropy)
+
+    if discritization is not None:
+        dblock = grid.discretize(discritization)
+        npd = len(dblock)
+        max_covariance = 0
+        for dp in dblock:
+            max_covariance += np.sum(vm.covariance(dp,dblock))
+
+        max_covariance -= vm.nugget*npd
+
+        max_covariance /= npd**2
+    else:
+        dblock = None
+        npd = 1
+        max_covariance = vm.max_covariance()
+
+    print("block covariance",max_covariance)
+
+    n = len(grid)
+    ret = np.empty((n,2))
+
+    non_estimated = 0
+
+    if full:
+        ret_indices = []
+
+    for i,point in enumerate(grid):
+        #print i,point
+        d,indices = kdtree.search(point,maxdata,search_range)
+        if debug >=1:
+            print('est at:',point,'neigborhs len:',len(indices))
+        if full:
+            ret_indices += [indices]
+
+        if len(indices) < mindata:
+            estimation = np.nan
+            variance = np.nan
+            non_estimated +=1
+        else:
+            estimation,variance,A,b,x = kriging_system(kriging_type,vm,max_covariance,point,points[indices,:],data[indices],dblock)
+        if debug >=3:
+            print("ponits:",points[indices])
+            print("A=",A)
+            print("b=",b)
+            print("x=",x)
+        if debug >=1:
+            print("estimation,variance:",estimation,variance)
+
+        ret[i,0] = estimation
+        ret[i,1] = variance
+
+    if full:
+        return ret,non_estimated,ret_indices
+    else:
+        return ret,non_estimated
+
+'''Calculate block kriging for 2D points'''
+def kriging2d_block_indices(kriging_type,indices,grid,points,data,vm,discritization=None,mean=None,mindata=1,maxdata=1,azimuth=0.0,search_range=np.inf,anisotropy=1.0,full=False,debug=1):
+    if mean is None:
+        mean = np.mean(data)
+    #create kd3
+    kdtree = KDTree2D(points,azimuth,anisotropy)
+
+    if discritization is not None:
+        dblock = grid.discretize(discritization)
+        npd = len(dblock)
+        max_covariance = 0
+        for dp in dblock:
+            max_covariance += np.sum(vm.covariance(dp,dblock))
+
+        max_covariance -= vm.nugget*npd
+
+        max_covariance /= npd**2
+    else:
+        dblock = None
+        npd = 1
+        max_covariance = vm.max_covariance()
+
+    print("block covariance",max_covariance)
+
+    n = len(indices)
+    ret = np.empty((n,2))
+
+    non_estimated = 0
+
+    if full:
+        ret_indices = []
+
+    for i,j in indices:
+        point = grid.get_location(i,j)
+        print(i,point)
+        d,indices = kdtree.search(point,maxdata,search_range)
+        if debug >=1:
+            print('est at:',point,'neigborhs len:',len(indices))
+        if full:
+            ret_indices += [indices]
+
+        if len(indices) < mindata:
+            estimation = np.nan
+            variance = np.nan
+            non_estimated +=1
+        else:
+            estimation,variance,A,b,x = kriging_system(kriging_type,vm,max_covariance,point,points[indices,:],data[indices],dblock)
+        if debug >=3:
+            print("ponits:",points[indices])
+            print("A=",A)
+            print("b=",b)
+            print("x=",x)
+        if debug >=1:
+            print("estimation,variance:",estimation,variance)
 
         ret[i,0] = estimation
         ret[i,1] = variance
