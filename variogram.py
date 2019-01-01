@@ -31,9 +31,15 @@ def exponential(h,c,a):
     ret = c*np.exp(-3.0*hr)
 
     return ret
+    
+def gaussian(h,c,a):
+    hr = h/a
+    ret = c*np.exp(-3.0*hr**2)
+    return ret
+    
 
 '''Supported variogram models'''
-structure_types = { "spherical":spherical, "exponential":exponential}
+structure_types = { "spherical":spherical, "exponential":exponential, "gaussian":gaussian}
 
 class VariogramStructure(object):
     def __init__(self,structure_type,sill,ranges,angles):

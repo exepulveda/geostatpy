@@ -50,7 +50,7 @@ def kriging_cross_validation(kriging_type,points,data,vm,mean,mindata,maxdata,se
 
 
     for i,point in enumerate(points):
-        #serach one more to eliminate itself
+        #search one more to eliminate itself
         d,indices = kdtree.search(point,maxdata+1,search_range)
 
         #remove zero distance
