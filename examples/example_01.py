@@ -1,6 +1,6 @@
 import numpy as np
-import variogram
-import kriging
+from geostatpy import variogram
+from geostatpy import kriging
 
 '''This example shows how to do a cross validation by kriging
 '''
@@ -11,7 +11,7 @@ vmodel.add_structure("spherical",1.5,[10,10,10],[0,0,0])
 vmodel.add_structure("spherical",1.0,[300,300,300],[0,0,0])
 
 
-data = np.loadtxt("samples.csv",delimiter=";")
+data = np.loadtxt("../data/samples.csv",delimiter=";")
 
 points = data[:,0:3]
 ore = data[:,3]

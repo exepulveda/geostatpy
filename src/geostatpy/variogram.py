@@ -1,6 +1,6 @@
 import numpy as np
 
-from geometry import sqdistance, make_rotation_matrix, make_rotation_matrix2D
+from .geometry import sqdistance, make_rotation_matrix, make_rotation_matrix2D
 from scipy.special import kv
 from scipy.special import gamma
 
@@ -39,20 +39,20 @@ def gaussian(h,c,a,**kargs):
     ret = c*np.exp(-3.0*hr**2)
     return ret
 
-def mater(h,c,a,**kargs):
+def matern(h,c,a,**kargs):
     hr = h/a
     nu = kargs['nu']
     #return c*(1.0-((2.0**(1.0-nu)/gamma(nu)) * (hr**nu) * kv(nu,hr)))
     return c*(((2.0**(1.0-nu)/gamma(nu)) * (hr**nu) * kv(nu,hr)))
 
-def mater_emery(h,c,a,**kargs):
+def matern_emery(h,c,a,**kargs):
     hr = h/a
     nu = kargs['nu']
     return c*((hr/2.0**nu)/gamma(nu) * kv(nu,hr))
     
 
 '''Supported variogram models'''
-structure_types = { "spherical":spherical, "exponential":exponential, "gaussian":gaussian, "matern":mater}
+structure_types = { "spherical":spherical, "exponential":exponential, "gaussian":gaussian, "matern":matern}
 structure_codes = { "spherical":1, "exponential":2,"gaussian":4,"matern":10}
 
 class VariogramStructure(object):

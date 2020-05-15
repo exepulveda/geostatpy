@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.spatial
 
-from geometry import sqdistance, make_rotation_matrix, make_rotation_matrix2D
+from .geometry import sqdistance, make_rotation_matrix, make_rotation_matrix2D
 
 '''Search parameter
 '''

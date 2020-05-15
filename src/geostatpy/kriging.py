@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.spatial
 
-from geometry import sqdistance, make_rotation_matrix, make_rotation_matrix2D
-from search import KDTree3D,KDTree2D,SearchParameter
+from .geometry import sqdistance, make_rotation_matrix, make_rotation_matrix2D
+from .search import KDTree3D,KDTree2D,SearchParameter
 
 supported_kriging_types = set(["simple","ordinary"])
 
