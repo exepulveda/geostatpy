@@ -1,7 +1,8 @@
-from numba import jit,njit
 import numpy as np
 import numpy.ma as ma
 import math
+
+import pdb
 
 def sqdistance(p1,p2,rotmat=None):
     diff = p1 - p2
@@ -35,7 +36,6 @@ def make_rotation_x(angle):
 
     return rotmat
     
-@njit
 def rescale_model(finner_grid_data,finner_grid_sizes,target_grid_sizes):
     n,m,p = finner_grid_data.shape
     total_sizes = np.asarray(finner_grid_sizes) * np.asarray(finner_grid_data.shape)
@@ -84,6 +84,114 @@ def rescale_model(finner_grid_data,finner_grid_sizes,target_grid_sizes):
                 #return None
                 
     return target_sum_data / target_count_data
+
+def rescale_model_sim(finner_grid_data,finner_grid_sizes,target_grid_sizes):
+    if np.array_equal(finner_grid_sizes,target_grid_sizes):
+        return finner_grid_data
+    
+    n,m,p,nr = finner_grid_data.shape
+    total_sizes = np.asarray(finner_grid_sizes) * np.asarray(finner_grid_data.shape[:3])
+    
+    target_nodes = np.ceil(total_sizes/target_grid_sizes)
+    
+    nx = int(target_nodes[0])
+    ny = int(target_nodes[1])
+    nz = int(target_nodes[2])
+    
+    target_sum_data = np.zeros((nx,ny,nz,nr))
+    target_count_data = np.zeros((nx,ny,nz,nr))
+    
+    #ratio of sizes
+    sx =  float(target_grid_sizes[0]/finner_grid_sizes[0])
+    sy =  float(target_grid_sizes[1]/finner_grid_sizes[1])
+    sz =  float(target_grid_sizes[2]/finner_grid_sizes[2])
+
+    #print(nx,ny,nz)
+    #print(sx,sy,sz)
+    
+    for i in range(nx):
+        si_f = int(math.floor(i*sx))
+        si_c = int(math.ceil(i*sx))
+        ei_f = min(int(math.floor((i+1)*sx)),n)
+        ei_c = min(int(math.ceil((i+1)*sx)),n)
+        #check for imcomplete cells
+        #diff_si = si_c - i*sx
+        #diff_ei = i*sx
+        for j in range(ny):
+            sj_f = int(math.floor(j*sy))
+            sj_c = int(math.ceil(j*sy))
+            ej_f = min(int(math.floor((j+1)*sy)),m)
+            ej_c = min(int(math.ceil((j+1)*sy)),m)
+            for k in range(nz):
+                sk_f = int(math.floor(k*sz))
+                sk_c = int(math.ceil(k*sz))
+                ek_f = min(int(math.floor((k+1)*sz)),p)
+                ek_c = min(int(math.ceil((k+1)*sz)),p)
+                #print(i,j,k,si_f,si_c,ei_f,ei_c,sj_f,sj_c,ej_f,ej_c,sk_f,sk_c,ek_f,ek_c)
+                patch_complete = finner_grid_data[si_c:ei_f,sj_c:ej_f,sk_c:ek_f,:]
+                target_sum_data[i,j,k,:] = np.sum(patch_complete,axis=(0,1,2))
+                target_count_data[i,j,k,:] = patch_complete.shape[0]*patch_complete.shape[1]*patch_complete.shape[2]
+                #check for imcomplete cells
+                #sf_c 
+                #return None
+                
+    return target_sum_data / target_count_data
+
+
+#@jit('f8[:,:,:,:](f8[:,:,:],i4[:],f8[:],f8[:])')
+def rescale_model_sim_nogrid(finner_grid_data,shape,finner_grid_sizes,target_grid_sizes):
+    if np.array_equal(finner_grid_sizes,target_grid_sizes):
+        return finner_grid_data
+    
+    n,nr,nd = finner_grid_data.shape
+
+    #ratio of sizes
+    sx =  float(target_grid_sizes[0]/finner_grid_sizes[0])
+    sy =  float(target_grid_sizes[1]/finner_grid_sizes[1])
+    sz =  float(target_grid_sizes[2]/finner_grid_sizes[2])
+
+    ngx,ngy,ngz = shape
+    nx = int(shape[0] / sx)
+    ny = int(shape[1] / sy)
+    nz = int(shape[2] / sz)
+    
+    target_data = np.zeros((n,nx,ny,nz,nr))
+    #target_count_data = np.zeros((n,nx,ny,nz,nr))
+    
+    for idx in range(n):
+        finner_data = np.array(finner_grid_data[idx,:,:])
+        finner_data = finner_data.reshape((nr,ngx,ngy,ngz))
+    
+        for i in range(nx):
+            si_f = int(math.floor(i*sx))
+            si_c = int(math.ceil(i*sx))
+            ei_f = min(int(math.floor((i+1)*sx)),ngx)
+            ei_c = min(int(math.ceil((i+1)*sx)),ngx)
+            #check for imcomplete cells
+            #diff_si = si_c - i*sx
+            #diff_ei = i*sx
+            for j in range(ny):
+                sj_f = int(math.floor(j*sy))
+                sj_c = int(math.ceil(j*sy))
+                ej_f = min(int(math.floor((j+1)*sy)),ngy)
+                ej_c = min(int(math.ceil((j+1)*sy)),ngy)
+                for k in range(nz):
+                    sk_f = int(math.floor(k*sz))
+                    sk_c = int(math.ceil(k*sz))
+                    ek_f = min(int(math.floor((k+1)*sz)),ngz)
+                    ek_c = min(int(math.ceil((k+1)*sz)),ngz)
+                    
+                    #pdb.set_trace()
+                    #print(i,j,k,si_f,si_c,ei_f,ei_c,sj_f,sj_c,ej_f,ej_c,sk_f,sk_c,ek_f,ek_c)
+                    patch_complete = finner_data[:,si_c:ei_f,sj_c:ej_f,sk_c:ek_f]
+                    #pdb.set_trace()
+                    target_data[idx,i,j,k,:] = np.mean(patch_complete,axis=(1,2,3))
+                    #target_count_data[idx,i,j,k,:] = patch_complete.shape[0]*patch_complete.shape[1]*patch_complete.shape[2]
+                    #check for imcomplete cells
+                    #sf_c 
+                    #return None
+                
+    return target_data
 
 
 def make_rotation_matrix(angles,ratios=[1.0, 1.0]):

@@ -1,12 +1,14 @@
 import numpy as np
 
 from geometry import sqdistance, make_rotation_matrix, make_rotation_matrix2D
+from scipy.special import kv
+from scipy.special import gamma
 
 class VariogramDefinitionException(Exception):
     pass
 
 
-def spherical(h,c,a):
+def spherical(h,c,a,**kargs):
     '''Spherica model
     '''
     hr = h/a
@@ -23,7 +25,7 @@ def spherical(h,c,a):
 
     return ret
 
-def exponential(h,c,a):
+def exponential(h,c,a,**kargs):
     '''Exponential model
     '''
     hr = h/a
@@ -32,18 +34,29 @@ def exponential(h,c,a):
 
     return ret
     
-def gaussian(h,c,a):
+def gaussian(h,c,a,**kargs):
     hr = h/a
     ret = c*np.exp(-3.0*hr**2)
     return ret
+
+def mater(h,c,a,**kargs):
+    hr = h/a
+    nu = kargs['nu']
+    #return c*(1.0-((2.0**(1.0-nu)/gamma(nu)) * (hr**nu) * kv(nu,hr)))
+    return c*(((2.0**(1.0-nu)/gamma(nu)) * (hr**nu) * kv(nu,hr)))
+
+def mater_emery(h,c,a,**kargs):
+    hr = h/a
+    nu = kargs['nu']
+    return c*((hr/2.0**nu)/gamma(nu) * kv(nu,hr))
     
 
 '''Supported variogram models'''
-structure_types = { "spherical":spherical, "exponential":exponential, "gaussian":gaussian}
-structure_codes = { "spherical":1, "exponential":2,"gaussian":4}
+structure_types = { "spherical":spherical, "exponential":exponential, "gaussian":gaussian, "matern":mater}
+structure_codes = { "spherical":1, "exponential":2,"gaussian":4,"matern":10}
 
 class VariogramStructure(object):
-    def __init__(self,structure_type,sill,ranges,angles):
+    def __init__(self,structure_type,sill,ranges,angles,**kargs):
         ranges = np.array(ranges)
         self.sill = sill
         self.structure_type = structure_type
@@ -51,12 +64,13 @@ class VariogramStructure(object):
         self._range = ranges[0]
         self._function = structure_types[structure_type]
         self._angles = angles
+        self._kargs = kargs
 
     def covariance(self,p1,p2):
         h2 = sqdistance(p1,p2,self._rotmat)
         h = np.sqrt(h2)
         #print('covariance',p1,p2,h2,h)
-        return self._function(h,self.sill,self._range)
+        return self._function(h,self.sill,self._range,**self._kargs)
 
     def regularized(self,w,gamma_bar_small_scale,W,gamma_bar_large_scale):
         new_sill = self.sill * (1.0 - gamma_bar_large_scale)/ (1.0-gamma_bar_small_scale)
@@ -68,8 +82,8 @@ class VariogramStructure(object):
         return new_st
 
 class VariogramStructure3D(VariogramStructure):
-    def __init__(self,structure_type,sill,ranges,angles=[0.0,0.0,0.0]):
-        VariogramStructure.__init__(self,structure_type,sill,ranges,angles)
+    def __init__(self,structure_type,sill,ranges,angles=[0.0,0.0,0.0],**kargs):
+        VariogramStructure.__init__(self,structure_type,sill,ranges,angles,**kargs)
         self._rotmat = make_rotation_matrix(angles,self._ranges[1:]/self._ranges[0])
 
 class VariogramStructure2D(VariogramStructure):
@@ -85,13 +99,14 @@ class VariogramModel(object):
         self._maxcov = None
 
     def __str__(self):
-        str = 'nugget=%f\n'%(self.nugget)
+        str = '\nnugget=%f\n'%(self.nugget)
         for i,st in enumerate(self.structures):
             str += 'structure %d:'%((i+1))
             str += '\ttype: %s'%(st.structure_type)
             str += '\tsill: %f'%(st.sill)
             str += '\tranges: %s'%(st._ranges)
             str += '\tangles: %s'%(st._angles)
+            str += '\tparam: %s'%(st._kargs)
             str += '\n'
         return str
 
@@ -303,6 +318,40 @@ class VariogramModel(object):
         #print "System",A,b
         return A,b
 
+    def kriging_system_many(self,points,neigborhood,dicretized_points=None):
+        #create Ax=b system
+        n = len(neigborhood)
+        m = len(points)
+
+        A = np.zeros((n,n))
+        for i in range(n):
+            p1 = neigborhood[i,:]
+            p2 = neigborhood[i:,:]
+            cov = self.covariance(p1,p2)
+            A[i,i:] = cov
+
+        #symmetric
+        for i in range(n):
+            A[i+1:,i] = A[i,i+1:]
+
+        B = np.empty((n,m))
+
+        for i,p in enumerate(points):
+            if dicretized_points is None:
+                b = self.covariance(p,neigborhood)
+                #print(p,b)
+            else:
+                b = np.zeros(n)
+                for pd in (dicretized_points + p):
+                    b += self.covariance(pd,neigborhood)
+
+                b = b / len(dicretized_points)
+
+            B[:,i] =b
+
+        #print "System",A,b
+        return A,B
+
     def block_gamma(self,dicretized_points):
         n = len(dicretized_points)
         max_covariance = self.max_covariance()
@@ -368,11 +417,11 @@ class VariogramModel3D(VariogramModel):
         VariogramModel.__init__(self,nugget)
         self._default_rotmat = make_rotation_matrix([0.0,0.0,0.0])
 
-    def add_structure(self,structure_type,sill,ranges,angles):
+    def add_structure(self,structure_type,sill,ranges,angles,**kargs):
         if structure_type not in structure_types:
             raise VariogramDefinitionException("Undefined structure type")
 
-        vs = VariogramStructure3D(structure_type,sill,ranges,angles)
+        vs = VariogramStructure3D(structure_type,sill,ranges,angles,**kargs)
         self.structures += [vs]
 
     def compute_variogram(self,directions):

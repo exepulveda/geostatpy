@@ -9,7 +9,7 @@ supported_kriging_types = set(["simple","ordinary"])
 class KrigingSetupException(Exception):
     pass
 
-def kriging_system(kriging_type,vm,max_variance,point,points,data,dicretized_points=None):
+def kriging_system(kriging_type,vm,max_variance,point,points,data,dicretized_points=None,trace=False):
     A,b = vm.kriging_system(point,points,dicretized_points)
     if kriging_type == "ordinary":
         #add lagrange
@@ -34,6 +34,37 @@ def kriging_system(kriging_type,vm,max_variance,point,points,data,dicretized_poi
     variance = max_variance -np.sum(x*b)
 
     return estimation,variance,A,b,x
+
+def kriging_system_many(kriging_type,vm,max_variance,points,sample_points,sample_data,dicretized_points=None,trace=False):
+    m = len(points)
+    A,B = vm.kriging_system_many(points,sample_points,dicretized_points)
+    if kriging_type == "ordinary":
+        #add lagrange
+        n = len(A)
+        n2,m = B.shape
+        
+        A2 = np.ones((n+1,n+1))
+        A2[0:n,0:n] = A
+        A2[n,n] = 0.0
+        B2 = np.ones((n+1,m))
+        B2[0:n,:] = B
+        A = A2
+        B = B2
+
+    x = np.linalg.solve(A,B)
+
+    #print(A.shape,B.shape,x.shape)
+
+    if kriging_type == "simple":
+        estimation = mean + np.sum((sample_data - mean) * x)
+    else:
+        estimation = []
+        variance = []
+        for i in range(m):
+            estimation += [np.sum(sample_data * x[:-1,i])]
+            variance += [max_variance -np.sum(x[:,i]*B[:,i])]
+
+    return np.array(estimation),np.array(variance),A,B,x
 
 '''Abstract cross validation by kriging'''
 def kriging_cross_validation(kriging_type,points,data,vm,mean,mindata,maxdata,search_range,kdtree,full=False):

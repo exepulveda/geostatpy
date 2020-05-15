@@ -66,3 +66,24 @@ def simulate_lu(nrealizations,sim_locations,sample_locations,sample_values,vmode
         cond_sim[:,i] = cond_part + l22 @ w2[:,i]
 
     return cond_sim
+
+def unconditional_simulation(locations,vmodel,size=1):
+    #generate covariance model
+    n = len(locations)
+    
+    C = np.empty((n,n))
+    C.fill(-999)
+    
+    for i in range(n):
+        loc1 = locations[i]
+        C[i,:] = vmodel.covariance(loc1,locations)
+        
+    np.fill_diagonal(C,1.0)
+
+    print(np.min(C))
+
+
+    #factorise C
+    L = cholesky(C,lower=True)
+    w = np.random.normal(size=(n,size))
+    return L @ w    
