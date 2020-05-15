@@ -1,7 +1,7 @@
 geostatpy
 =========
 
-I wish to introduce "geostatpy" a geostatistical python toolbox.
+I want to introduce "geostatpy" a geostatistical python toolbox.
 
 This toolbox has been my partner since my time as PhD at The University of Adelaide.
 
